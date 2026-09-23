@@ -91,7 +91,7 @@
                 cursor: ns-resize;
                 background-color: var(--primary-color);
                 border-radius: 30%;
-                z-index: 2010;
+                z-index: 99;
                 flex-shrink: 0;
                 display: flex;
                 opacity: 0.8;
