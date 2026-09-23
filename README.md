@@ -59,7 +59,7 @@ Interactive elements like buttons and text inputs are excluded to prevent accide
 * **Height Resizing**  
 Drag the handle added at the bottom of the input area to freely resize it (up to 2.5x).  
 
-* **Auto-Save & Restore Position / Height**  
+* **Auto-Save & Restore - Position & Height**  
 Your custom position and height are saved automatically and restored the next time you open the post window or reload the page.  
 (Height saving is disabled by default.)  
 
