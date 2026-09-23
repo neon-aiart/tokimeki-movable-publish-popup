@@ -6,10 +6,12 @@
 🇯🇵  
 
 TOKIMEKI（Blueskyクライアント）の投稿ポップアップ（ダイアログ）を自由な位置へドラッグ移動および高さのリサイズができるようにするユーザースクリプト（UserScript）です  
+中央固定じゃない入力エリアはすべてを変える！  
 
 🇺🇸  
 
 A UserScript that allows you to freely drag, relocate, and resize the height of the post popup (dialog) on TOKIMEKI (a Bluesky client).  
+A non-centered post popup changes everything!  
 
 ⭐ スターをポチッとお願いします✨ (Please hit the [Star] button!)  
 
