@@ -5,7 +5,7 @@
 // @description    Makes the TOKIMEKI post popup draggable.
 // @description:en Makes the TOKIMEKI post popup draggable.
 // @description:ja TOKIMEKIの投稿ポップアップをドラッグで移動可能にします
-// @version        1.4
+// @version        1.5
 // @icon           data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚓</text></svg>
 // @author         ねおん
 // @namespace      https://bsky.app/profile/neon-ai.art
@@ -36,81 +36,83 @@
 (function () {
     'use strict';
 
-    const SCRIPT_VERSION = '1.4';
-    const DEBUG = false;
+    const SCRIPT_VERSION = '1.5';
+
+    const DEBUG = true;
     if (DEBUG) console.log(`[${getDateTimeFormats().display}] ⚓ TOKIMEKI Movable Publish Popup v${SCRIPT_VERSION}: デバッグモード`);
 
     const STORAGE_KEY = 'tokimeki_movable_publish_popup';
     const SAVED_HEIGHT = false; // 高さも保存
+    const MAX_HEIGHT = 450;     // 初期値（180px）の 2.5 倍
 
     let cachedPos = null; // メモリ上にデータを保持するキャッシュ変数
 
     // スタイルの注入
     GM_addStyle(`
-        /* 1. 親枠を強制的 Flexbox 化 & リサイズハンドルを許可 */
-        .publish-group--popup .publish-wrap {
-            position: relative;
-            display: flex;
-            flex-direction: column;
-        }
-        .publish-group--popup .publish-wrap.publish-wrap {
-            overflow: visible;
-        }
+        /* 画面幅が768px以上（PC等）のときだけカスタムポップアップ・リサイズを有効化 */
+        @media (min-width: 768px) {
+            /* 1. 親枠を強制的 Flexbox 化 & リサイズハンドルを許可 */
+            .publish-group--popup .publish-wrap {
+                position: relative;
+                display: flex;
+                flex-direction: column;
+                max-height: calc(100vh);
+            }
 
-        /* 2. 内部ボディとフォームを高さ追従させる */
-        .publish-group--popup .publish-wrap .publish-body,
-        .publish-group--popup .publish-wrap form {
-            flex: 1 1 auto;
-            display: flex;
-            flex-direction: column;
-            min-height: 0;
-        }
+            /* 2. 内部ボディとフォームを高さ追従させる */
+            .publish-group--popup .publish-wrap .publish-body,
+            .publish-group--popup .publish-wrap form {
+                flex: 1 1 auto;
+                display: flex;
+                flex-direction: column;
+                min-height: 0;
+            }
 
-        /* 3. エディタ本体の高さ制限と内部スクロールを解除 */
-        .publish-group--popup .editor,
-        .publish-group--popup .tiptap {
-            max-height: none;
-            overflow-y: visible;
-            flex: 1 1 auto;
-        }
+            /* 3. 位置固定モード */
+            .publish-group--popup .publish-wrap[data-custom-pos="true"] {
+                position: fixed;
+                transform: none;
+            }
 
-        .publish-group--popup .editor {
-            height: auto;
-        }
+            /* ヘッダー領域のドラッグハンドル */
+            .publish-group--popup .publish-header {
+                cursor: move;
+                user-select: none; /* テキスト選択防止 */
+                -webkit-user-select: none;
+            }
 
-        .publish-group--popup .publish-wrap textarea {
-            flex: 1 1 auto;
-            resize: none;
-        }
+            /* エディター下のリサイズハンドル */
+            .publish-resize-handle-bottom {
+                position: sticky;
+                bottom: 0;
+                left: 0;
+                width: 100%;
+                height: 4px;
+                cursor: ns-resize;
+                background-color: var(--primary-color);
+                border-radius: 30%;
+                z-index: 2010;
+                flex-shrink: 0;
+                display: flex;
+                opacity: 0.8;
+                align-items: center;
+                justify-content: center;
+                transition: opacity 0.2s ease, filter 0.2s ease, transform 0.2s ease;
+            }
 
-        /* 4. 位置固定モード */
-        .publish-group--popup .publish-wrap[data-custom-pos="true"] {
-            position: fixed;
-            transform: none;
-        }
+            /* マウスホバー時にうっすらガイドラインを表示 */
+            .publish-resize-handle-bottom:hover,
+            body.is-popup-dragging .publish-resize-handle-bottom {
+                opacity: 1; /* マウスを乗せると100%の濃いテーマカラーに！ */
+                filter: drop-shadow(0 0 4px var(--primary-color)); /* ほんのり綺麗に発光 */
+                transform: scaleY(1.3); /* ほんの少し太くして操作感をアップ */
+            }
 
-        /* ヘッダー領域をドラッグハンドル化 */
-        .publish-group--popup .publish-header {
-            cursor: move;
-            user-select: none; /* テキスト選択防止 */
-            -webkit-user-select: none;
-        }
-
-        /* 底辺のリサイズハンドル */
-        .publish-resize-handle-bottom {
-            position: absolute;
-            bottom: -5px;
-            left: 0;
-            width: 100%;
-            height: 10px;
-            cursor: ns-resize;
-            background: transparent;
-        }
-
-        /* ドラッグ移動中の誤作動防止 */
-        body.is-popup-dragging {
-            user-select: none;
-            -webkit-user-select: none;
+            /* ドラッグ移動中の誤作動防止 */
+            body.is-popup-dragging {
+                user-select: none;
+                -webkit-user-select: none;
+            }
         }
     `);
 
@@ -173,7 +175,6 @@
             // キャッシュとストレージの両方を確実に更新
             cachedPos = current;
             localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
-            if (DEBUG) console.log('[DEBUG] ⚓ データ保存:', current);
         } catch (e) {
             if (DEBUG) console.error('[DEBUG] ⚓ データ保存エラー:', e);
         }
@@ -220,56 +221,11 @@
         }
     }
 
-    // ポップアップが開いたときに記憶した位置へ復元する監視処理
-    const observer = new MutationObserver(() => {
-        const group = document.querySelector('.publish-group--popup');
-        const wrap = group?.querySelector('.publish-wrap');
-
-        if (!group || !wrap) return;
-
-        const isExpanded = group.classList.contains('publish-group--expanded');
-
-        if (isExpanded) {
-            // リサイズハンドルがなければ追加
-            if (!wrap.querySelector('.publish-resize-handle-bottom')) {
-                const handle = document.createElement('div');
-                handle.className = 'publish-resize-handle-bottom';
-                wrap.appendChild(handle);
-            }
-
-            // 保存された位置・高さの復元
-            if (!wrap.dataset.posApplied) {
-                const pos = loadPosition();
-
-                // データが存在する場合のみ復元処理を実行
-                if (pos && (pos.left !== undefined || pos.height !== undefined)) {
-                    if (typeof pos.left === 'number' && typeof pos.top === 'number') {
-                        wrap.style.left = `${pos.left}px`;
-                        wrap.style.top = `${pos.top}px`;
-                        wrap.setAttribute('data-custom-pos', 'true');
-                    }
-
-                    if (SAVED_HEIGHT && typeof pos.height === 'number') {
-                        const editorEl = wrap.querySelector('.tiptap') || wrap.querySelector('.editor');
-                        if (editorEl) {
-                            editorEl.style.height = `${pos.height}px`;
-                        }
-                    }
-                }
-
-                // 復元フラグを立てる（空データの場合でも何度も読みに行かないようここでセット）
-                wrap.dataset.posApplied = 'true';
-                if (DEBUG) console.log('[DEBUG] ⚓ 保存された位置と高さを復元:', pos);
-            }
-        } else {
-            delete wrap.dataset.posApplied;
-        }
-    });
-
-    observer.observe(document.body, { childList: true, subtree: true, });
-
     // ダブルクリックによるリセット処理
     document.addEventListener('dblclick', (e) => {
+        // 画面幅が768px未満（スマホ・タブレット表示）のときは位置リセットを行わない
+        if (window.innerWidth < 768) return;
+
         const header = e.target.closest('.publish-header');
         if (!header) return;
 
@@ -285,8 +241,11 @@
         resetPosition(wrap);
     });
 
-    // イベントリスナー（ヘッダー移動 ＆ 底辺リサイズ）
+    // イベントリスナー（ヘッダー移動 ＆ エディターリサイズ）
     document.addEventListener('mousedown', (e) => {
+        // 画面幅が768px未満（スマホ・タブレット全画面モード）のときは何もしない
+        if (window.innerWidth < 768) return;
+
         // --- 1. 底辺リサイズ処理 ---
         const resizeHandle = e.target.closest('.publish-resize-handle-bottom');
         if (resizeHandle) {
@@ -313,7 +272,7 @@
             const initialHeight = editorEl.getBoundingClientRect().height || 180;
 
             const minHeight = 180;
-            const maxHeight = 450; // 180px の 2.5 倍
+            const maxHeight = MAX_HEIGHT;
 
             const onMouseMove = (moveEvent) => {
                 const dy = moveEvent.clientY - startY;
@@ -322,6 +281,7 @@
 
                 // エディタ本体の要素の高さを直接変更
                 editorEl.style.height = `${newHeight}px`;
+                editorEl.style.maxHeight = `${newHeight}px`; // CSS側のmax-height上書き対策
             };
 
             const onMouseUp = () => {
@@ -331,6 +291,7 @@
                     // 上位置が変わった可能性に備えて現在位置と高さを同時に保存
                     const finalRect = wrap.getBoundingClientRect();
                     savePosition(finalRect.left, finalRect.top, currentHeight);
+                    if (DEBUG) console.log('[DEBUG] ⚓ エディターリサイズ:', { SAVED_HEIGHT, finalRect, currentHeight, });
                 }
                 document.removeEventListener('mousemove', onMouseMove);
                 document.removeEventListener('mouseup', onMouseUp);
@@ -401,6 +362,7 @@
             // 終了時の位置を保存
             const currentRect = wrap.getBoundingClientRect();
             savePosition(currentRect.left, currentRect.top);
+            if (DEBUG) console.log('[DEBUG] ⚓ ヘッダー移動:', currentRect);
 
             document.removeEventListener('mousemove', onMouseMove);
             document.removeEventListener('mouseup', onMouseUp);
@@ -409,4 +371,93 @@
         document.addEventListener('mousemove', onMouseMove);
         document.addEventListener('mouseup', onMouseUp);
     });
+
+    /* mutation */
+
+    // --- 1. ポップアップ要素専用の監視ロジック ---
+    function attachPopupObserver(group) {
+        const wrap = group.querySelector('.publish-wrap');
+        if (!wrap) return;
+
+        // 計算後のスタイルやサイズを正確に取得（DEBUG用 & 画面溢れチェック用）
+        if (DEBUG) console.log('[DEBUG] ⚓ ポップアップ要素を発見！直接監視を開始します:', wrap.getBoundingClientRect());
+
+        const popupObserver = new MutationObserver(() => {
+            const isExpanded = group.classList.contains('publish-group--expanded');
+
+            if (isExpanded) {
+                // リサイズハンドルの追加
+                const editorEl = wrap.querySelector('.editor');
+                if (editorEl && !editorEl.querySelector('.publish-resize-handle-bottom')) {
+                    // editorEl.style.position = 'relative';
+                    const handle = document.createElement('div');
+                    handle.className = 'publish-resize-handle-bottom';
+                    editorEl.appendChild(handle);
+                }
+
+                // 位置と高さの復元処理
+                if (!wrap.dataset.posApplied) {
+                    const pos = loadPosition();
+
+                    if (pos) {
+                        if (typeof pos.left === 'number' && typeof pos.top === 'number') {
+                            wrap.style.left = `${pos.left}px`;
+                            wrap.style.top = `${pos.top}px`;
+                            wrap.setAttribute('data-custom-pos', 'true');
+                        }
+
+                        if (SAVED_HEIGHT && typeof pos.height === 'number') {
+                            const editorEl = wrap.querySelector('.tiptap') || wrap.querySelector('.editor');
+                            if (editorEl) {
+                                editorEl.style.height = `${pos.height}px`;
+                            }
+                        }
+                    }
+
+                    wrap.dataset.posApplied = 'true';
+                    if (DEBUG) console.log('[DEBUG] ⚓ 保存された位置と高さを復元:', wrap.getBoundingClientRect());
+                }
+            } else {
+                // 閉じられたら復元フラグを削除
+                delete wrap.dataset.posApplied;
+            }
+        });
+
+        // ポップアップ本体の class 変化（expandedの着脱）のみをピンポイント監視
+        popupObserver.observe(group, {
+            attributes: true,
+            attributeFilter: ['class',],
+        });
+    }
+
+    // --- 2. 初回の要素出現待ち（document.body 監視） ---
+    function init() {
+        const group = document.querySelector('.publish-group--popup');
+
+        // すでに DOM に存在していれば直接監視を開始
+        if (group) {
+            attachPopupObserver(group);
+            return;
+        }
+
+        // まだ DOM にない場合は body を監視して出現を待つ
+        if (DEBUG) console.log('[DEBUG] ⚓ ポップアップ未検出。DOMの生成を待機中...');
+
+        const bodyObserver = new MutationObserver((mutations, obs) => {
+            const group = document.querySelector('.publish-group--popup');
+            if (group) {
+                attachPopupObserver(group);
+                obs.disconnect(); // 要素が見つかったので body の監視は停止する
+                if (DEBUG) console.log('[DEBUG] ⚓ bodyの監視を解除しました');
+            }
+        });
+
+        bodyObserver.observe(document.body, {
+            childList: true,
+            subtree: true,
+        });
+    }
+
+    // 実行開始
+    init();
 })();
