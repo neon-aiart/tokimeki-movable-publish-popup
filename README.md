@@ -13,7 +13,11 @@ TOKIMEKI（Blueskyクライアント）の投稿ポップアップ（ダイア�
 A UserScript that allows you to freely drag, relocate, and resize the height of the post popup (dialog) on TOKIMEKI (a Bluesky client).  
 A non-centered post popup changes everything!  
 
-⭐ スターをポチッとお願いします✨ (Please hit the [Star] button!)  
+⭐ [スター](https://github.com/neon-aiart/neon-spitch-link)をポチッとお願いします✨ (Please hit the [Star] button!)  
+
+<a href="https://b.hatena.ne.jp/entry/panel/?url=https://github.com/neon-aiart/tokimeki-movable-publish-popup"><img src="https://b.hatena.ne.jp/favicon.ico" width="20" height="20" alt="📖"></a> ポチッと[ブックマーク](https://b.hatena.ne.jp/entry/panel/?url=https://github.com/neon-aiart/tokimeki-movable-publish-popup)をお願い致します✨ (Please click the [Bookmark] button!)  
+
+<br clear="all">  
 
 ---
 
